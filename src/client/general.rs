@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use client::Binance;
 use error::Result;
-use model::{ExchangeInfo, ExchangeInformation, ServerTime};
+use model::{ExchangeInfo, ServerTime};
 
 impl Binance {
     // Test connectivity
@@ -22,11 +22,5 @@ impl Binance {
 
     pub fn get_exchange_info(&self) -> Result<impl Future<Item = ExchangeInfo, Error = Error>> {
         Ok(self.transport.get::<_, ()>("/api/v1/exchangeInfo", None)?)
-    }
-
-    // Obtain exchange information (rate limits, symbol metadata etc)
-    pub fn exchange_info(&self) -> Result<impl Future<Item = ExchangeInformation, Error = Error>> {
-        let info = self.transport.get::<_, ()>("/api/v1/exchangeInfo", None)?;
-        Ok(info)
     }
 }

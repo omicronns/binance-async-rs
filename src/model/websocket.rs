@@ -1,12 +1,9 @@
-use super::string_or_float;
-use super::{
-    Asks, Bids, Kline, OrderBook, OrderExecType, OrderRejectReason, OrderStatus, OrderType, Side,
-    TimeInForce,
-};
+use super::{Asks, Bids, OrderBook};
+use decimal::Decimal;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Subscription {
-    UserData(String),            // listen key
+pub enum BinanceSubscription {
+    // Websocket streams
     AggregateTrade(String),      //symbol
     Trade(String),               //symbol
     Candlestick(String, String), //symbol, interval
@@ -14,55 +11,41 @@ pub enum Subscription {
     MiniTickerAll,
     Ticker(String), // symbol
     TickerAll,
-    OrderBook(String, i64), //symbol, depth
-    Depth(String),          //symbol
+    PartialDepth(String, u64), //symbol, level
+    DiffDepth(String),         //symbol
+    OrderBook(String, u64),    //symbol, depth
+
+    // User data streams
+    UserData(String), // listen key
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub enum BinanceWebsocketMessage {
-    UserOrderUpdate(UserOrderUpdate),
-    UserAccountUpdate(AccountUpdate),
+    // Websocket streams
     AggregateTrade(AggregateTrade),
-    Trade(TradeMessage),
-    Candlestick(CandelStickMessage),
+    Trade(Trade),
+    Candlestick(CandlestickMessage),
     MiniTicker(MiniTicker),
     MiniTickerAll(Vec<MiniTicker>),
     Ticker(Ticker),
     TickerAll(Vec<Ticker>),
     OrderBook(OrderBook),
-    Depth(Depth),
+    PartialDepth(PartialDepth),
+    DiffDepth(DiffDepth),
     Ping,
     Pong,
+
+    // User data streams
+    AccountUpdate(AccountUpdate),
+    OrderUpdate(OrderUpdate),
+
     Binary(Vec<u8>), // Unexpected, unparsed
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct TradeMessage {
-    #[serde(rename = "e")]
-    pub event_type: String,
-    #[serde(rename = "E")]
-    pub event_time: u64,
-    #[serde(rename = "s")]
-    pub symbol: String,
-    #[serde(rename = "t")]
-    pub trade_id: u64,
-    #[serde(rename = "p", with = "string_or_float")]
-    pub price: f64,
-    #[serde(rename = "q", with = "string_or_float")]
-    pub qty: f64,
-    #[serde(rename = "b")]
-    pub buyer_order_id: u64,
-    #[serde(rename = "a")]
-    pub seller_order_id: u64,
-    #[serde(rename = "T")]
-    pub trade_order_time: u64,
-    #[serde(rename = "m")]
-    pub is_buyer_maker: bool,
-    #[serde(skip_serializing, rename = "M")]
-    pub m_ignore: bool,
-}
+// Websocket streams
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md
 
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#aggregate-trade-streams
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AggregateTrade {
@@ -73,26 +56,109 @@ pub struct AggregateTrade {
     #[serde(rename = "s")]
     pub symbol: String,
     #[serde(rename = "a")]
-    pub aggregated_trade_id: u64,
-    #[serde(rename = "p", with = "string_or_float")]
-    pub price: f64,
-    #[serde(rename = "q", with = "string_or_float")]
-    pub qty: f64,
+    pub aggregate_trade_id: u64,
+    #[serde(rename = "p")]
+    pub price: Decimal,
+    #[serde(rename = "q")]
+    pub qty: Decimal,
     #[serde(rename = "f")]
-    pub first_break_trade_id: u64,
+    pub first_trade_id: u64,
     #[serde(rename = "l")]
-    pub last_break_trade_id: u64,
+    pub last_trade_id: u64,
     #[serde(rename = "T")]
-    pub trade_order_time: u64,
+    pub trade_time: u64,
     #[serde(rename = "m")]
     pub is_buyer_maker: bool,
-    #[serde(skip_serializing, rename = "M")]
+    #[serde(rename = "M", skip_serializing)]
     pub m_ignore: bool,
 }
 
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct UserOrderUpdate {
+pub struct Trade {
+    #[serde(rename = "e")]
+    pub event_type: String,
+    #[serde(rename = "E")]
+    pub event_time: u64,
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "t")]
+    pub trade_id: u64,
+    #[serde(rename = "p")]
+    pub price: Decimal,
+    #[serde(rename = "q")]
+    pub qty: Decimal,
+    #[serde(rename = "b")]
+    pub buyer_order_id: u64,
+    #[serde(rename = "a")]
+    pub seller_order_id: u64,
+    #[serde(rename = "T")]
+    pub trade_time: u64,
+    #[serde(rename = "m")]
+    pub is_buyer_maker: bool,
+    #[serde(rename = "M", skip_serializing)]
+    pub m_ignore: bool,
+}
+
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#klinecandlestick-streams
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CandlestickMessage {
+    #[serde(rename = "e")]
+    pub event_type: String,
+    #[serde(rename = "E")]
+    pub event_time: u64,
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "k")]
+    pub kline: CandlestickMessageKline,
+}
+
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#klinecandlestick-streams
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CandlestickMessageKline {
+    #[serde(rename = "t")]
+    pub start_time: u64,
+    #[serde(rename = "T")]
+    pub close_time: u64,
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "i")]
+    pub interval: String,
+    #[serde(rename = "f")]
+    pub first_trade_id: u64,
+    #[serde(rename = "L")]
+    pub last_trade_id: u64,
+    #[serde(rename = "o")]
+    pub open_price: Decimal,
+    #[serde(rename = "c")]
+    pub close_price: Decimal,
+    #[serde(rename = "h")]
+    pub high_price: Decimal,
+    #[serde(rename = "l")]
+    pub low_price: Decimal,
+    #[serde(rename = "v")]
+    pub base_volume: Decimal,
+    #[serde(rename = "n")]
+    pub number_of_trades: u64,
+    #[serde(rename = "x")]
+    pub is_kline_closed: bool,
+    #[serde(rename = "q")]
+    pub quote_volume: Decimal,
+    #[serde(rename = "V")]
+    pub taker_buy_base_volume: Decimal,
+    #[serde(rename = "Q")]
+    pub taker_buy_quote_volume: Decimal,
+    #[serde(rename = "B", skip_serializing)]
+    pub b_ignore: String,
+}
+
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#individual-symbol-mini-ticker-stream
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MiniTicker {
     #[serde(rename = "e")]
     pub event_type: String,
     #[serde(rename = "E")]
@@ -100,64 +166,84 @@ pub struct UserOrderUpdate {
     #[serde(rename = "s")]
     pub symbol: String,
     #[serde(rename = "c")]
-    pub new_client_order_id: String,
-    #[serde(rename = "S")]
-    pub side: Side,
+    pub close_price: Decimal,
     #[serde(rename = "o")]
-    pub order_type: OrderType,
-    #[serde(rename = "f")]
-    pub time_in_force: TimeInForce,
-    #[serde(rename = "q", with = "string_or_float")]
-    pub qty: f64,
-    #[serde(rename = "p", with = "string_or_float")]
-    pub price: f64,
-    #[serde(rename = "P", with = "string_or_float")]
-    pub stop_price: f64,
-    #[serde(rename = "F", with = "string_or_float")]
-    pub iceberg_qty: f64,
-    #[serde(skip_serializing)]
-    pub g: i32,
-    #[serde(skip_serializing, rename = "C")]
-    pub c_ignore: Option<String>,
-    #[serde(rename = "x")]
-    pub execution_type: OrderExecType,
-    #[serde(rename = "X")]
-    pub order_status: OrderStatus,
-    #[serde(rename = "r")]
-    pub order_reject_reason: OrderRejectReason,
-    #[serde(rename = "i")]
-    pub order_id: u64,
-    #[serde(rename = "l", with = "string_or_float")]
-    pub qty_last_filled_trade: f64,
-    #[serde(rename = "z", with = "string_or_float")]
-    pub accumulated_qty_filled_trades: f64,
-    #[serde(rename = "L", with = "string_or_float")]
-    pub price_last_filled_trade: f64,
-    #[serde(rename = "n", with = "string_or_float")]
-    pub commission: f64,
-    #[serde(skip_serializing, rename = "N")]
-    pub asset_commisioned: Option<String>,
-    #[serde(rename = "T")]
-    pub trade_order_time: u64,
-    #[serde(rename = "t")]
-    pub trade_id: i64,
-    #[serde(skip_serializing, rename = "I")]
-    pub i_ignore: u64,
-    #[serde(skip_serializing)]
-    pub w: bool,
-    #[serde(rename = "m")]
-    pub is_buyer_maker: bool,
-    #[serde(skip_serializing, rename = "M")]
-    pub m_ignore: bool,
-    #[serde(skip_serializing, rename = "O")]
-    pub order_creation_time: u64,
-    #[serde(skip_serializing, rename = "Z", with = "string_or_float")]
-    pub cumulative_quote_asset_transacted_qty: f64,
+    pub open_price: Decimal,
+    #[serde(rename = "l")]
+    pub low_price: Decimal,
+    #[serde(rename = "h")]
+    pub high_price: Decimal,
+    #[serde(rename = "v")]
+    pub base_volume: Decimal,
+    #[serde(rename = "q")]
+    pub quote_volume: Decimal,
 }
 
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#individual-symbol-ticker-streams
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Depth {
+pub struct Ticker {
+    #[serde(rename = "e")]
+    pub event_type: String,
+    #[serde(rename = "E")]
+    pub event_time: u64,
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "p")]
+    pub price_change: Decimal,
+    #[serde(rename = "P")]
+    pub price_change_percent: Decimal,
+    #[serde(rename = "w")]
+    pub average_price: Decimal,
+    #[serde(rename = "x")]
+    pub first_price: Decimal,
+    #[serde(rename = "c")]
+    pub last_price: Decimal,
+    #[serde(rename = "Q")]
+    pub last_qty: Decimal,
+    #[serde(rename = "b")]
+    pub best_bid_price: Decimal,
+    #[serde(rename = "B")]
+    pub best_bid_qty: Decimal,
+    #[serde(rename = "a")]
+    pub best_ask_price: Decimal,
+    #[serde(rename = "A")]
+    pub best_ask_qty: Decimal,
+    #[serde(rename = "o")]
+    pub open_price: Decimal,
+    #[serde(rename = "h")]
+    pub high_price: Decimal,
+    #[serde(rename = "l")]
+    pub low_price: Decimal,
+    #[serde(rename = "v")]
+    pub base_volume: Decimal,
+    #[serde(rename = "q")]
+    pub quote_volume: Decimal,
+    #[serde(rename = "O")]
+    pub stat_open_time: u64,
+    #[serde(rename = "C")]
+    pub stat_close_time: u64,
+    #[serde(rename = "F")]
+    pub first_trade_id: u64,
+    #[serde(rename = "L")]
+    pub last_trade_id: u64,
+    #[serde(rename = "n")]
+    pub num_trades: u64,
+}
+
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#partial-book-depth-streams
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialDepth {
+    pub last_update_id: u64,
+    pub bids: Vec<Bids>,
+    pub asks: Vec<Asks>,
+}
+
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#diff-depth-stream
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffDepth {
     #[serde(rename = "e")]
     pub event_type: String,
     #[serde(rename = "E")]
@@ -174,70 +260,10 @@ pub struct Depth {
     pub asks: Vec<Asks>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Ticker {
-    #[serde(rename = "e")]
-    pub event_type: String,
-    #[serde(rename = "E")]
-    pub event_time: u64,
-    #[serde(rename = "s")]
-    pub symbol: String,
-    #[serde(rename = "p", with = "string_or_float")]
-    pub price_change: f64,
-    #[serde(rename = "P", with = "string_or_float")]
-    pub price_change_percent: f64,
-    #[serde(rename = "w", with = "string_or_float")]
-    pub average_price: f64,
-    #[serde(rename = "x", with = "string_or_float")]
-    pub prev_close: f64,
-    #[serde(rename = "c", with = "string_or_float")]
-    pub current_close: f64,
-    #[serde(rename = "Q", with = "string_or_float")]
-    pub current_close_qty: f64,
-    #[serde(rename = "b", with = "string_or_float")]
-    pub best_bid: f64,
-    #[serde(rename = "B", with = "string_or_float")]
-    pub best_bid_qty: f64,
-    #[serde(rename = "a", with = "string_or_float")]
-    pub best_ask: f64,
-    #[serde(rename = "A", with = "string_or_float")]
-    pub best_ask_qty: f64,
-    #[serde(rename = "o", with = "string_or_float")]
-    pub open: f64,
-    #[serde(rename = "h", with = "string_or_float")]
-    pub high: f64,
-    #[serde(rename = "l", with = "string_or_float")]
-    pub low: f64,
-    #[serde(rename = "v", with = "string_or_float")]
-    pub volume: f64,
-    #[serde(rename = "q", with = "string_or_float")]
-    pub quote_volume: f64,
-    #[serde(rename = "O")]
-    pub open_time: u64,
-    #[serde(rename = "C")]
-    pub close_time: u64,
-    #[serde(rename = "F")]
-    pub first_trade_id: u64,
-    #[serde(rename = "L")]
-    pub last_trade_id: u64,
-    #[serde(rename = "n")]
-    pub num_trades: u64,
-}
+// User data streams
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CandelStickMessage {
-    #[serde(rename = "e")]
-    pub event_type: String,
-    #[serde(rename = "E")]
-    pub event_time: u64,
-    #[serde(rename = "s")]
-    pub symbol: String,
-    #[serde(rename = "k")]
-    pub kline: Kline,
-}
-
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountUpdate {
@@ -260,41 +286,143 @@ pub struct AccountUpdate {
     #[serde(rename = "D")]
     pub can_deposit: bool,
     #[serde(rename = "u")]
-    pub last_account_update: u64,
+    pub last_update_time: u64,
     #[serde(rename = "B")]
-    pub balance: Vec<AccountUpdateBalance>,
+    pub balances: Vec<AccountUpdateBalance>,
 }
 
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountUpdateBalance {
     #[serde(rename = "a")]
     pub asset: String,
-    #[serde(rename = "f", with = "string_or_float")]
-    pub free: f64,
-    #[serde(rename = "l", with = "string_or_float")]
-    pub locked: f64,
+    #[serde(rename = "f")]
+    pub free: Decimal,
+    #[serde(rename = "l")]
+    pub locked: Decimal,
 }
 
+// https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#order-update
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct MiniTicker {
+pub struct OrderUpdate {
     #[serde(rename = "e")]
     pub event_type: String,
     #[serde(rename = "E")]
     pub event_time: u64,
     #[serde(rename = "s")]
     pub symbol: String,
-    #[serde(rename = "c", with = "string_or_float")]
-    pub close: f64,
-    #[serde(rename = "o", with = "string_or_float")]
-    pub open: f64,
-    #[serde(rename = "l", with = "string_or_float")]
-    pub low: f64,
-    #[serde(rename = "h", with = "string_or_float")]
-    pub high: f64,
-    #[serde(rename = "v", with = "string_or_float")]
-    pub volume: f64,
-    #[serde(rename = "q", with = "string_or_float")]
-    pub quote_volume: f64,
+    #[serde(rename = "c")]
+    pub client_order_id: String,
+    #[serde(rename = "S")]
+    pub side: OrderSide,
+    #[serde(rename = "o")]
+    pub order_type: OrderType,
+    #[serde(rename = "f")]
+    pub time_in_force: OrderTimeInForce,
+    #[serde(rename = "q")]
+    pub order_qty: Decimal,
+    #[serde(rename = "p")]
+    pub order_price: Decimal,
+    #[serde(rename = "P")]
+    pub stop_price: Decimal,
+    #[serde(rename = "F")]
+    pub iceberg_qty: Decimal,
+    #[serde(skip_serializing)]
+    pub g: i64,
+    #[serde(rename = "C")]
+    pub orig_client_order_id: Option<String>,
+    #[serde(rename = "x")]
+    pub execution_type: OrderExecType,
+    #[serde(rename = "X")]
+    pub order_status: OrderStatus,
+    #[serde(rename = "r")]
+    pub order_reject_reason: OrderRejectReason,
+    #[serde(rename = "i")]
+    pub order_id: u64,
+    #[serde(rename = "l")]
+    pub last_exec_qty: Decimal,
+    #[serde(rename = "z")]
+    pub cumulative_filled_qty: Decimal,
+    #[serde(rename = "L")]
+    pub last_exec_price: Decimal,
+    #[serde(rename = "n")]
+    pub commission_qty: Decimal,
+    #[serde(rename = "N")]
+    pub commission_asset: Option<String>,
+    #[serde(rename = "T")]
+    pub transaction_time: u64,
+    #[serde(rename = "t")]
+    pub trade_id: i64,
+    #[serde(rename = "I", skip_serializing)]
+    pub i_ignore: i64,
+    #[serde(rename = "w")]
+    pub is_working: bool,
+    #[serde(rename = "m")]
+    pub is_maker: bool,
+    #[serde(rename = "M", skip_serializing)]
+    pub m_ignore: bool,
+    #[serde(rename = "O")]
+    pub order_creation_time: u64,
+    #[serde(rename = "Z")]
+    pub cumulative_quote_transacted_qty: Decimal,
+    #[serde(rename = "Y")]
+    pub last_quote_transacted_qty: Decimal,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderSide {
+    Buy,
+    Sell,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderType {
+    Market,
+    Limit,
+    StopLoss,
+    StopLossLimit,
+    TakeProfit,
+    TakeProfitLimit,
+    LimitMaker,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderTimeInForce {
+    GTC,
+    IOC,
+    FOK,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderExecType {
+    New,
+    Canceled,
+    Replaced,
+    Rejected,
+    Trade,
+    Expired,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderStatus {
+    New,
+    PartiallyFilled,
+    Filled,
+    Canceled,
+    PendingCancel,
+    Rejected,
+    Expired,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderRejectReason {
+    None,
 }

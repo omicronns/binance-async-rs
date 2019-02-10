@@ -5,8 +5,9 @@ use std::collections::HashMap;
 use sugar::{convert_args, hashmap};
 
 use client::Binance;
+use decimal::Decimal;
 use error::{BinanceError, Result};
-use model::{AccountInformation, Balance, Order, OrderCanceled, TradeHistory, Transaction};
+use model::{AccountInformation, Balance, OrderCanceled, OrderStatus, TradeHistory, Transaction};
 
 static ORDER_TYPE_LIMIT: &'static str = "LIMIT";
 static ORDER_TYPE_MARKET: &'static str = "MARKET";
@@ -18,8 +19,8 @@ static API_V3_ORDER: &'static str = "/api/v3/order";
 
 struct OrderRequest {
     pub symbol: String,
-    pub qty: f64,
-    pub price: f64,
+    pub qty: Decimal,
+    pub price: Decimal,
     pub order_side: String,
     pub order_type: String,
     pub time_in_force: String,
@@ -53,7 +54,7 @@ impl Binance {
     pub fn get_open_orders(
         &self,
         symbol: &str,
-    ) -> Result<impl Future<Item = Vec<Order>, Error = Error>> {
+    ) -> Result<impl Future<Item = Vec<OrderStatus>, Error = Error>> {
         let params = json! {{"symbol": symbol}};
         let orders = self
             .transport
@@ -62,7 +63,9 @@ impl Binance {
     }
 
     // All current open orders
-    pub fn get_all_open_orders(&self) -> Result<impl Future<Item = Vec<Order>, Error = Error>> {
+    pub fn get_all_open_orders(
+        &self,
+    ) -> Result<impl Future<Item = Vec<OrderStatus>, Error = Error>> {
         let orders = self
             .transport
             .signed_get::<_, ()>("/api/v3/openOrders", None)?;
@@ -74,7 +77,7 @@ impl Binance {
         &self,
         symbol: &str,
         order_id: u64,
-    ) -> Result<impl Future<Item = Order, Error = Error>> {
+    ) -> Result<impl Future<Item = OrderStatus, Error = Error>> {
         let params = json! {{"symbol": symbol, "orderId": order_id}};
 
         let order = self.transport.signed_get(API_V3_ORDER, Some(params))?;
@@ -85,8 +88,8 @@ impl Binance {
     pub fn limit_buy(
         &self,
         symbol: &str,
-        qty: f64,
-        price: f64,
+        qty: Decimal,
+        price: Decimal,
     ) -> Result<impl Future<Item = Transaction, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
@@ -107,8 +110,8 @@ impl Binance {
     pub fn limit_sell(
         &self,
         symbol: &str,
-        qty: f64,
-        price: f64,
+        qty: Decimal,
+        price: Decimal,
     ) -> Result<impl Future<Item = Transaction, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
@@ -128,12 +131,12 @@ impl Binance {
     pub fn market_buy(
         &self,
         symbol: &str,
-        qty: f64,
+        qty: Decimal,
     ) -> Result<impl Future<Item = Transaction, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
-            qty: qty.into(),
-            price: 0.0,
+            qty: qty,
+            price: 0.into(),
             order_side: ORDER_SIDE_BUY.to_string(),
             order_type: ORDER_TYPE_MARKET.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
@@ -148,12 +151,12 @@ impl Binance {
     pub fn market_sell(
         &self,
         symbol: &str,
-        qty: f64,
+        qty: Decimal,
     ) -> Result<impl Future<Item = Transaction, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
-            qty: qty.into(),
-            price: 0.0,
+            qty: qty,
+            price: 0.into(),
             order_side: ORDER_SIDE_SELL.to_string(),
             order_type: ORDER_TYPE_MARKET.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
@@ -195,7 +198,7 @@ impl Binance {
             "quantity" => order.qty.to_string(),
         ));
 
-        if order.price != 0.0 {
+        if order.price != 0.into() {
             params.insert("price", order.price.to_string());
             params.insert("timeInForce", order.time_in_force.to_string());
         }

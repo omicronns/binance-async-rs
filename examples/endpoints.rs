@@ -30,33 +30,38 @@ fn main() -> Result<()> {
         Err(e) => println!("Error: {}", e),
     }
 
+    match rt.block_on(bn.get_exchange_info()?) {
+        Ok(answer) => println!("Exchange info: {:?}", answer),
+        Err(e) => println!("Error: {}", e),
+    }
+
     // Account
     match rt.block_on(bn.get_account()?) {
         Ok(answer) => println!("{:?}", answer.balances),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.get_open_orders("WTCETH")?) {
+    match rt.block_on(bn.get_all_open_orders()?) {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.limit_buy("ETHBTC", 1., 0.1)?) {
+    match rt.block_on(bn.limit_buy("ETHBTC", 1.into(), "0.1".parse().unwrap())?) {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.market_buy("WTCETH", 5.)?) {
+    match rt.block_on(bn.market_buy("WTCETH", 5.into())?) {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.limit_sell("WTCETH", 10., 0.035000)?) {
+    match rt.block_on(bn.limit_sell("WTCETH", 10.into(), "0.035".parse().unwrap())?) {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.market_sell("WTCETH", 5.)?) {
+    match rt.block_on(bn.market_sell("WTCETH", 5.into())?) {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }

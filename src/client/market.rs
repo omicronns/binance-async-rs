@@ -7,8 +7,9 @@ use serde_json::json;
 use serde_json::Value;
 
 use super::Binance;
+use decimal::Decimal;
 use error::{BinanceError, Result};
-use model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker};
+use model::{BookTickers, Kline, Klines, OrderBook, PriceStats, Prices, Ticker};
 
 // Market Data endpoints
 impl Binance {
@@ -35,7 +36,7 @@ impl Binance {
     }
 
     // Latest price for ONE symbol.
-    pub fn get_price(&self, symbol: &str) -> Result<impl Future<Item = f64, Error = Error>> {
+    pub fn get_price(&self, symbol: &str) -> Result<impl Future<Item = Decimal, Error = Error>> {
         let symbol = symbol.to_string();
         Ok(self
             .get_all_prices()?
@@ -90,9 +91,9 @@ impl Binance {
         limit: S3,
         start_time: S4,
         end_time: S5,
-    ) -> Result<impl Future<Item = KlineSummaries, Error = Error>>
+    ) -> Result<impl Future<Item = Klines, Error = Error>>
     where
-        S3: Into<Option<u16>>,
+        S3: Into<Option<u64>>,
         S4: Into<Option<u64>>,
         S5: Into<Option<u64>>,
     {
@@ -117,20 +118,20 @@ impl Binance {
             self.transport
                 .get("/api/v1/klines", Some(params))?
                 .map(|data: Vec<Vec<Value>>| {
-                    KlineSummaries::AllKlineSummaries(
+                    Klines::AllKlines(
                         data.iter()
-                            .map(|row| KlineSummary {
+                            .map(|row| Kline {
                                 open_time: to_i64(&row[0]),
-                                open: to_f64(&row[1]),
-                                high: to_f64(&row[2]),
-                                low: to_f64(&row[3]),
-                                close: to_f64(&row[4]),
-                                volume: to_f64(&row[5]),
+                                open: to_decimal(&row[1]),
+                                high: to_decimal(&row[2]),
+                                low: to_decimal(&row[3]),
+                                close: to_decimal(&row[4]),
+                                volume: to_decimal(&row[5]),
                                 close_time: to_i64(&row[6]),
-                                quote_asset_volume: to_f64(&row[7]),
+                                quote_asset_volume: to_decimal(&row[7]),
                                 number_of_trades: to_i64(&row[8]),
-                                taker_buy_base_asset_volume: to_f64(&row[9]),
-                                taker_buy_quote_asset_volume: to_f64(&row[10]),
+                                taker_buy_base_asset_volume: to_decimal(&row[9]),
+                                taker_buy_quote_asset_volume: to_decimal(&row[10]),
                             })
                             .collect(),
                     )
@@ -150,6 +151,6 @@ fn to_i64(v: &Value) -> i64 {
     v.as_i64().unwrap()
 }
 
-fn to_f64(v: &Value) -> f64 {
+fn to_decimal(v: &Value) -> Decimal {
     v.as_str().unwrap().parse().unwrap()
 }

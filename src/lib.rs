@@ -15,6 +15,7 @@ extern crate chrono;
 extern crate futures;
 extern crate hyper_tls;
 extern crate result;
+extern crate rust_decimal;
 extern crate sugar;
 extern crate tokio;
 extern crate tokio_tungstenite;
@@ -22,6 +23,7 @@ extern crate tungstenite;
 extern crate url;
 
 mod client;
+pub mod decimal;
 pub mod error;
 pub mod model;
 mod transport;

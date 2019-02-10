@@ -10,7 +10,7 @@ use futures::{Future, Stream};
 use tokio::runtime::current_thread::Runtime;
 
 use binance::error::Result;
-use binance::model::websocket::Subscription;
+use binance::model::websocket::BinanceSubscription;
 use binance::Binance;
 
 fn main() -> Result<()> {
@@ -29,21 +29,26 @@ fn main() -> Result<()> {
 
             let job = bn
                 .websocket()
-                .subscribe(Subscription::Ticker("ethbtc".to_string()))
-                .and_then(|ws| ws.subscribe(Subscription::AggregateTrade("eosbtc".to_string())))
+                .subscribe(BinanceSubscription::AggregateTrade("eosbtc".to_string()))
+                .and_then(|ws| ws.subscribe(BinanceSubscription::Trade("adabtc".to_string())))
                 .and_then(|ws| {
-                    ws.subscribe(Subscription::Candlestick(
+                    ws.subscribe(BinanceSubscription::Candlestick(
                         "ethbtc".to_string(),
                         "1m".to_string(),
                     ))
                 })
-                .and_then(|ws| ws.subscribe(Subscription::Depth("xrpbtc".to_string())))
-                .and_then(|ws| ws.subscribe(Subscription::MiniTicker("zrxbtc".to_string())))
-                .and_then(|ws| ws.subscribe(Subscription::OrderBook("trxbtc".to_string(), 5)))
-                .and_then(|ws| ws.subscribe(Subscription::Trade("adabtc".to_string())))
-                .and_then(|ws| ws.subscribe(Subscription::UserData(listen_key)))
-                .and_then(|ws| ws.subscribe(Subscription::MiniTickerAll))
-                .and_then(|ws| ws.subscribe(Subscription::TickerAll))
+                .and_then(|ws| ws.subscribe(BinanceSubscription::MiniTicker("adabtc".to_string())))
+                .and_then(|ws| ws.subscribe(BinanceSubscription::MiniTickerAll))
+                .and_then(|ws| ws.subscribe(BinanceSubscription::Ticker("ethbtc".to_string())))
+                .and_then(|ws| ws.subscribe(BinanceSubscription::TickerAll))
+                .and_then(|ws| {
+                    ws.subscribe(BinanceSubscription::PartialDepth("xrpbtc".to_string(), 5))
+                })
+                .and_then(|ws| ws.subscribe(BinanceSubscription::DiffDepth("xrpbtc".to_string())))
+                .and_then(|ws| {
+                    ws.subscribe(BinanceSubscription::OrderBook("trxbtc".to_string(), 5))
+                })
+                .and_then(|ws| ws.subscribe(BinanceSubscription::UserData(listen_key)))
                 .and_then(|ws| ws.map(|msg| println!("{:?}", msg)).collect());
             let _ = rt.block_on(job).unwrap();
         }

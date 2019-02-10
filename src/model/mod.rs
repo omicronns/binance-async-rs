@@ -33,7 +33,7 @@ pub struct Balance {
 #[serde(rename_all = "camelCase")]
 pub struct OrderStatus {
     pub symbol: String,
-    pub order_id: u64,
+    pub order_id: i64,
     pub client_order_id: String,
     pub price: Decimal,
     pub orig_qty: Decimal,
@@ -53,7 +53,7 @@ pub struct OrderStatus {
 pub struct OrderCanceled {
     pub symbol: String,
     pub orig_client_order_id: String,
-    pub order_id: u64,
+    pub order_id: i64,
     pub client_order_id: String,
 }
 
@@ -61,7 +61,7 @@ pub struct OrderCanceled {
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub symbol: String,
-    pub order_id: u64,
+    pub order_id: i64,
     pub client_order_id: String,
     pub transact_time: u64,
 }
@@ -97,13 +97,7 @@ pub struct Success {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[serde(untagged)]
-pub enum Prices {
-    AllPrices(Vec<SymbolPrice>),
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SymbolPrice {
+pub struct Price {
     pub symbol: String,
     pub price: Decimal,
 }
@@ -111,13 +105,8 @@ pub struct SymbolPrice {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
-pub enum BookTickers {
-    AllBookTickers(Vec<Ticker>),
-}
-
-#[derive(Debug, Clone)]
-pub enum Klines {
-    AllKlines(Vec<Kline>),
+pub enum Prices {
+    AllPrices(Vec<Price>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -132,10 +121,17 @@ pub struct Ticker {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[serde(untagged)]
+pub enum Tickers {
+    AllTickers(Vec<Ticker>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TradeHistory {
     pub symbol: String,
     pub id: u64,
-    pub order_id: u64,
+    pub order_id: i64,
     pub price: Decimal,
     pub qty: Decimal,
     pub commission: Decimal,
@@ -181,6 +177,11 @@ pub struct Kline {
     pub number_of_trades: i64,
     pub taker_buy_base_asset_volume: Decimal,
     pub taker_buy_quote_asset_volume: Decimal,
+}
+
+#[derive(Debug, Clone)]
+pub enum Klines {
+    AllKlines(Vec<Kline>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -285,7 +286,7 @@ pub enum SymbolFilter {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderBook {
-    pub last_update_id: u64,
+    pub last_update_id: i64,
     pub bids: Vec<Bids>,
     pub asks: Vec<Asks>,
 }

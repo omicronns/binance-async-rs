@@ -56,15 +56,15 @@ pub struct AggregateTrade {
     #[serde(rename = "s")]
     pub symbol: String,
     #[serde(rename = "a")]
-    pub aggregate_trade_id: u64,
+    pub aggregate_trade_id: i64,
     #[serde(rename = "p")]
     pub price: Decimal,
     #[serde(rename = "q")]
     pub qty: Decimal,
     #[serde(rename = "f")]
-    pub first_trade_id: u64,
+    pub first_trade_id: i64,
     #[serde(rename = "l")]
-    pub last_trade_id: u64,
+    pub last_trade_id: i64,
     #[serde(rename = "T")]
     pub trade_time: u64,
     #[serde(rename = "m")]
@@ -84,15 +84,15 @@ pub struct Trade {
     #[serde(rename = "s")]
     pub symbol: String,
     #[serde(rename = "t")]
-    pub trade_id: u64,
+    pub trade_id: i64,
     #[serde(rename = "p")]
     pub price: Decimal,
     #[serde(rename = "q")]
     pub qty: Decimal,
     #[serde(rename = "b")]
-    pub buyer_order_id: u64,
+    pub buyer_order_id: i64,
     #[serde(rename = "a")]
-    pub seller_order_id: u64,
+    pub seller_order_id: i64,
     #[serde(rename = "T")]
     pub trade_time: u64,
     #[serde(rename = "m")]
@@ -128,9 +128,9 @@ pub struct CandlestickMessageKline {
     #[serde(rename = "i")]
     pub interval: String,
     #[serde(rename = "f")]
-    pub first_trade_id: u64,
+    pub first_trade_id: i64,
     #[serde(rename = "L")]
-    pub last_trade_id: u64,
+    pub last_trade_id: i64,
     #[serde(rename = "o")]
     pub open_price: Decimal,
     #[serde(rename = "c")]
@@ -224,9 +224,9 @@ pub struct Ticker {
     #[serde(rename = "C")]
     pub stat_close_time: u64,
     #[serde(rename = "F")]
-    pub first_trade_id: u64,
+    pub first_trade_id: i64,
     #[serde(rename = "L")]
-    pub last_trade_id: u64,
+    pub last_trade_id: i64,
     #[serde(rename = "n")]
     pub num_trades: u64,
 }
@@ -235,7 +235,7 @@ pub struct Ticker {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PartialDepth {
-    pub last_update_id: u64,
+    pub last_update_id: i64,
     pub bids: Vec<Bids>,
     pub asks: Vec<Asks>,
 }
@@ -251,9 +251,9 @@ pub struct DiffDepth {
     #[serde(rename = "s")]
     pub symbol: String,
     #[serde(rename = "U")]
-    pub first_update_id: u64,
+    pub first_update_id: i64,
     #[serde(rename = "u")]
-    pub final_update_id: u64,
+    pub final_update_id: i64,
     #[serde(rename = "b")]
     pub bids: Vec<Bids>,
     #[serde(rename = "a")]
@@ -340,7 +340,7 @@ pub struct OrderUpdate {
     #[serde(rename = "r")]
     pub order_reject_reason: OrderRejectReason,
     #[serde(rename = "i")]
-    pub order_id: u64,
+    pub order_id: i64,
     #[serde(rename = "l")]
     pub last_exec_qty: Decimal,
     #[serde(rename = "z")]

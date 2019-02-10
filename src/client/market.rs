@@ -8,12 +8,12 @@ use serde_json::Value;
 
 use super::Binance;
 use decimal::Decimal;
-use error::{BinanceError, Result};
-use model::{BookTickers, Kline, Klines, OrderBook, PriceStats, Prices, Ticker};
+use error::Result;
+use model::{Kline, Klines, OrderBook, Price, PriceStats, Prices, Ticker, Tickers};
 
 // Market Data endpoints
 impl Binance {
-    // Order book (Default 100; max 100)
+    // Order book (Default 100; max 1000)
     pub fn get_depth<I>(
         &self,
         symbol: &str,
@@ -29,32 +29,22 @@ impl Binance {
     }
 
     // Latest price for ALL symbols.
-    pub fn get_all_prices(&self) -> Result<impl Future<Item = Prices, Error = Error>> {
-        Ok(self
-            .transport
-            .get::<_, ()>("/api/v1/ticker/allPrices", None)?)
+    pub fn get_prices(&self) -> Result<impl Future<Item = Prices, Error = Error>> {
+        Ok(self.transport.get::<_, ()>("/api/v3/ticker/price", None)?)
     }
 
     // Latest price for ONE symbol.
-    pub fn get_price(&self, symbol: &str) -> Result<impl Future<Item = Decimal, Error = Error>> {
-        let symbol = symbol.to_string();
-        Ok(self
-            .get_all_prices()?
-            .and_then(move |Prices::AllPrices(prices)| {
-                Ok(prices
-                    .into_iter()
-                    .find(|obj| obj.symbol == symbol)
-                    .map(|par| par.price)
-                    .ok_or(BinanceError::SymbolNotFound)?)
-            }))
+    pub fn get_price(&self, symbol: &str) -> Result<impl Future<Item = Price, Error = Error>> {
+        let params = json! {{"symbol": symbol}};
+        Ok(self.transport.get("/api/v3/ticker/price", Some(params))?)
     }
 
     // Symbols order book ticker
     // -> Best price/qty on the order book for ALL symbols.
-    pub fn get_all_book_tickers(&self) -> Result<impl Future<Item = BookTickers, Error = Error>> {
+    pub fn get_book_tickers(&self) -> Result<impl Future<Item = Tickers, Error = Error>> {
         Ok(self
             .transport
-            .get::<_, ()>("/api/v1/ticker/allBookTickers", None)?)
+            .get::<_, ()>("/api/v3/ticker/bookTicker", None)?)
     }
 
     // -> Best price/qty on the order book for ONE symbol
@@ -62,15 +52,10 @@ impl Binance {
         &self,
         symbol: &str,
     ) -> Result<impl Future<Item = Ticker, Error = Error>> {
-        let symbol = symbol.to_string();
-        Ok(self.get_all_book_tickers()?.and_then(
-            move |BookTickers::AllBookTickers(book_tickers)| {
-                Ok(book_tickers
-                    .into_iter()
-                    .find(|obj| obj.symbol == symbol)
-                    .ok_or(BinanceError::SymbolNotFound)?)
-            },
-        ))
+        let params = json! {{"symbol": symbol}};
+        Ok(self
+            .transport
+            .get("/api/v3/ticker/bookTicker", Some(params))?)
     }
 
     // 24hr ticker price change statistics

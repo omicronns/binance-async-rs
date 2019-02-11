@@ -180,12 +180,6 @@ impl Transport {
 
         let req = req.body(Body::from(body))?;
 
-        // let req = Request::builder()
-        //     .method(method)
-        //     .uri(url.as_str())
-        //     .header("user-agent", "binance-rs")
-        //     .header("content-type", "application/x-www-form-urlencoded")
-        //     .body(Body::from(body))?;
         Ok(self.handle_response(self.client.request(req)))
     }
 

@@ -9,7 +9,7 @@ use serde_json::Value;
 use super::Binance;
 use decimal::Decimal;
 use error::Result;
-use model::{Kline, Klines, OrderBook, Price, PriceStats, Prices, Ticker, Tickers};
+use model::{KlineMsg, OrderBookMsg, PriceMsg, PriceStatsMsg, TickerMsg};
 
 // Market Data endpoints
 impl Binance {
@@ -18,7 +18,7 @@ impl Binance {
         &self,
         symbol: &str,
         limit: I,
-    ) -> Result<impl Future<Item = OrderBook, Error = Error>>
+    ) -> Result<impl Future<Item = OrderBookMsg, Error = Error>>
     where
         I: Into<Option<u64>>,
     {
@@ -28,43 +28,50 @@ impl Binance {
         Ok(self.transport.get("/api/v1/depth", Some(params))?)
     }
 
-    // Latest price for ALL symbols.
-    pub fn get_prices(&self) -> Result<impl Future<Item = Prices, Error = Error>> {
-        Ok(self.transport.get::<_, ()>("/api/v3/ticker/price", None)?)
-    }
-
     // Latest price for ONE symbol.
-    pub fn get_price(&self, symbol: &str) -> Result<impl Future<Item = Price, Error = Error>> {
+    pub fn get_price(&self, symbol: &str) -> Result<impl Future<Item = PriceMsg, Error = Error>> {
         let params = json! {{"symbol": symbol}};
         Ok(self.transport.get("/api/v3/ticker/price", Some(params))?)
     }
 
-    // Symbols order book ticker
-    // -> Best price/qty on the order book for ALL symbols.
-    pub fn get_book_tickers(&self) -> Result<impl Future<Item = Tickers, Error = Error>> {
-        Ok(self
-            .transport
-            .get::<_, ()>("/api/v3/ticker/bookTicker", None)?)
+    // Latest price for ALL symbols.
+    pub fn get_price_all(&self) -> Result<impl Future<Item = Vec<PriceMsg>, Error = Error>> {
+        Ok(self.transport.get::<_, ()>("/api/v3/ticker/price", None)?)
     }
 
     // -> Best price/qty on the order book for ONE symbol
     pub fn get_book_ticker(
         &self,
         symbol: &str,
-    ) -> Result<impl Future<Item = Ticker, Error = Error>> {
+    ) -> Result<impl Future<Item = TickerMsg, Error = Error>> {
         let params = json! {{"symbol": symbol}};
         Ok(self
             .transport
             .get("/api/v3/ticker/bookTicker", Some(params))?)
     }
 
+    // Symbols order book ticker
+    // -> Best price/qty on the order book for ALL symbols.
+    pub fn get_book_ticker_all(&self) -> Result<impl Future<Item = Vec<TickerMsg>, Error = Error>> {
+        Ok(self
+            .transport
+            .get::<_, ()>("/api/v3/ticker/bookTicker", None)?)
+    }
+
     // 24hr ticker price change statistics
     pub fn get_24h_price_stats(
         &self,
         symbol: &str,
-    ) -> Result<impl Future<Item = PriceStats, Error = Error>> {
+    ) -> Result<impl Future<Item = PriceStatsMsg, Error = Error>> {
         let params = json! {{"symbol": symbol}};
         Ok(self.transport.get("/api/v1/ticker/24hr", Some(params))?)
+    }
+
+    // 24hr ticker price change statistics
+    pub fn get_24h_price_stats_all(
+        &self,
+    ) -> Result<impl Future<Item = Vec<PriceStatsMsg>, Error = Error>> {
+        Ok(self.transport.get::<_, ()>("/api/v1/ticker/24hr", None)?)
     }
 
     // Returns up to 'limit' klines for given symbol and interval ("1m", "5m", ...)
@@ -76,7 +83,7 @@ impl Binance {
         limit: S3,
         start_time: S4,
         end_time: S5,
-    ) -> Result<impl Future<Item = Klines, Error = Error>>
+    ) -> Result<impl Future<Item = Vec<KlineMsg>, Error = Error>>
     where
         S3: Into<Option<u64>>,
         S4: Into<Option<u64>>,
@@ -99,41 +106,35 @@ impl Binance {
         }
         let params: HashMap<&str, String> = HashMap::from_iter(params);
 
-        let summaries =
+        // todo: check if kline parsing could be done with serde
+        // Ok(self.transport.get("/api/v1/klines", Some(params))?)
+
+        let klines =
             self.transport
                 .get("/api/v1/klines", Some(params))?
                 .map(|data: Vec<Vec<Value>>| {
-                    Klines::AllKlines(
-                        data.iter()
-                            .map(|row| Kline {
-                                open_time: to_i64(&row[0]),
-                                open: to_decimal(&row[1]),
-                                high: to_decimal(&row[2]),
-                                low: to_decimal(&row[3]),
-                                close: to_decimal(&row[4]),
-                                volume: to_decimal(&row[5]),
-                                close_time: to_i64(&row[6]),
-                                quote_asset_volume: to_decimal(&row[7]),
-                                number_of_trades: to_i64(&row[8]),
-                                taker_buy_base_asset_volume: to_decimal(&row[9]),
-                                taker_buy_quote_asset_volume: to_decimal(&row[10]),
-                            })
-                            .collect(),
-                    )
+                    data.iter()
+                        .map(|row| KlineMsg {
+                            open_time: to_u64(&row[0]),
+                            open: to_decimal(&row[1]),
+                            high: to_decimal(&row[2]),
+                            low: to_decimal(&row[3]),
+                            close: to_decimal(&row[4]),
+                            volume: to_decimal(&row[5]),
+                            close_time: to_u64(&row[6]),
+                            quote_asset_volume: to_decimal(&row[7]),
+                            number_of_trades: to_u64(&row[8]),
+                            taker_buy_base_asset_volume: to_decimal(&row[9]),
+                            taker_buy_quote_asset_volume: to_decimal(&row[10]),
+                        })
+                        .collect()
                 });
-        Ok(summaries)
-    }
-
-    // 24hr ticker price change statistics
-    pub fn get_24h_price_stats_all(
-        &self,
-    ) -> Result<impl Future<Item = Vec<PriceStats>, Error = Error>> {
-        Ok(self.transport.get::<_, ()>("/api/v1/ticker/24hr", None)?)
+        Ok(klines)
     }
 }
 
-fn to_i64(v: &Value) -> i64 {
-    v.as_i64().unwrap()
+fn to_u64(v: &Value) -> u64 {
+    v.as_u64().unwrap()
 }
 
 fn to_decimal(v: &Value) -> Decimal {

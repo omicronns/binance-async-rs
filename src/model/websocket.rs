@@ -1,4 +1,7 @@
-use super::{Asks, Bids, OrderBook};
+use super::{
+    AskMsg, BidMsg, OrderBookMsg, OrderExecType, OrderRejectReason, OrderSide, OrderStatus,
+    OrderTimeInForce, OrderType,
+};
 use decimal::Decimal;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -11,9 +14,8 @@ pub enum BinanceSubscription {
     MiniTickerAll,
     Ticker(String), // symbol
     TickerAll,
-    PartialDepth(String, u64), //symbol, level
-    DiffDepth(String),         //symbol
     OrderBook(String, u64),    //symbol, depth
+    DiffDepth(String),         //symbol
 
     // User data streams
     UserData(String), // listen key
@@ -29,8 +31,7 @@ pub enum BinanceWebsocketMessage {
     MiniTickerAll(Vec<MiniTicker>),
     Ticker(Ticker),
     TickerAll(Vec<Ticker>),
-    OrderBook(OrderBook),
-    PartialDepth(PartialDepth),
+    OrderBook(OrderBookMsg),
     DiffDepth(DiffDepth),
     Ping,
     Pong,
@@ -46,7 +47,7 @@ pub enum BinanceWebsocketMessage {
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#aggregate-trade-streams
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AggregateTrade {
     #[serde(rename = "e")]
@@ -74,7 +75,7 @@ pub struct AggregateTrade {
 }
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Trade {
     #[serde(rename = "e")]
@@ -102,7 +103,7 @@ pub struct Trade {
 }
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#klinecandlestick-streams
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CandlestickMessage {
     #[serde(rename = "e")]
@@ -116,7 +117,7 @@ pub struct CandlestickMessage {
 }
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#klinecandlestick-streams
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CandlestickMessageKline {
     #[serde(rename = "t")]
@@ -156,7 +157,7 @@ pub struct CandlestickMessageKline {
 }
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#individual-symbol-mini-ticker-stream
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MiniTicker {
     #[serde(rename = "e")]
@@ -180,7 +181,7 @@ pub struct MiniTicker {
 }
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#individual-symbol-ticker-streams
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Ticker {
     #[serde(rename = "e")]
@@ -231,17 +232,8 @@ pub struct Ticker {
     pub num_trades: u64,
 }
 
-// https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#partial-book-depth-streams
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct PartialDepth {
-    pub last_update_id: i64,
-    pub bids: Vec<Bids>,
-    pub asks: Vec<Asks>,
-}
-
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#diff-depth-stream
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiffDepth {
     #[serde(rename = "e")]
@@ -255,16 +247,16 @@ pub struct DiffDepth {
     #[serde(rename = "u")]
     pub final_update_id: i64,
     #[serde(rename = "b")]
-    pub bids: Vec<Bids>,
+    pub bids: Vec<BidMsg>,
     #[serde(rename = "a")]
-    pub asks: Vec<Asks>,
+    pub asks: Vec<AskMsg>,
 }
 
 // User data streams
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountUpdate {
     #[serde(rename = "e")]
@@ -292,7 +284,7 @@ pub struct AccountUpdate {
 }
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountUpdateBalance {
     #[serde(rename = "a")]
@@ -304,7 +296,7 @@ pub struct AccountUpdateBalance {
 }
 
 // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#order-update
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderUpdate {
     #[serde(rename = "e")]
@@ -369,60 +361,4 @@ pub struct OrderUpdate {
     pub cumulative_quote_transacted_qty: Decimal,
     #[serde(rename = "Y")]
     pub last_quote_transacted_qty: Decimal,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderSide {
-    Buy,
-    Sell,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderType {
-    Market,
-    Limit,
-    StopLoss,
-    StopLossLimit,
-    TakeProfit,
-    TakeProfitLimit,
-    LimitMaker,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderTimeInForce {
-    GTC,
-    IOC,
-    FOK,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderExecType {
-    New,
-    Canceled,
-    Replaced,
-    Rejected,
-    Trade,
-    Expired,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderStatus {
-    New,
-    PartiallyFilled,
-    Filled,
-    Canceled,
-    PendingCancel,
-    Rejected,
-    Expired,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderRejectReason {
-    None,
 }

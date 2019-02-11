@@ -47,14 +47,10 @@ impl BinanceWebsocket {
             BinanceSubscription::MiniTickerAll => "!miniTicker@arr".to_string(),
             BinanceSubscription::Ticker(ref symbol) => format!("{}@ticker", symbol),
             BinanceSubscription::TickerAll => "!ticker@arr".to_string(),
-            BinanceSubscription::PartialDepth(ref symbol, level) => {
-                format!("{}@depth{}", symbol, level)
-            }
-            BinanceSubscription::DiffDepth(ref symbol) => format!("{}@depth", symbol),
-
             BinanceSubscription::OrderBook(ref symbol, depth) => {
                 format!("{}@depth{}", symbol, depth)
             }
+            BinanceSubscription::DiffDepth(ref symbol) => format!("{}@depth", symbol),
             BinanceSubscription::UserData(ref listen_key) => listen_key.clone(),
         };
 
@@ -133,11 +129,8 @@ fn parse_message(sub: BinanceSubscription, msg: Message) -> Result<BinanceWebsoc
         }
         BinanceSubscription::Ticker(..) => BinanceWebsocketMessage::Ticker(from_str(&msg)?),
         BinanceSubscription::TickerAll => BinanceWebsocketMessage::TickerAll(from_str(&msg)?),
-        BinanceSubscription::PartialDepth(..) => {
-            BinanceWebsocketMessage::PartialDepth(from_str(&msg)?)
-        }
-        BinanceSubscription::DiffDepth(..) => BinanceWebsocketMessage::DiffDepth(from_str(&msg)?),
         BinanceSubscription::OrderBook(..) => BinanceWebsocketMessage::OrderBook(from_str(&msg)?),
+        BinanceSubscription::DiffDepth(..) => BinanceWebsocketMessage::DiffDepth(from_str(&msg)?),
         BinanceSubscription::UserData(..) => {
             let msg: Either<AccountUpdate, OrderUpdate> = from_str(&msg)?;
             match msg {

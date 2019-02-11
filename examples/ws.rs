@@ -42,12 +42,9 @@ fn main() -> Result<()> {
                 .and_then(|ws| ws.subscribe(BinanceSubscription::Ticker("ethbtc".to_string())))
                 .and_then(|ws| ws.subscribe(BinanceSubscription::TickerAll))
                 .and_then(|ws| {
-                    ws.subscribe(BinanceSubscription::PartialDepth("xrpbtc".to_string(), 5))
-                })
-                .and_then(|ws| ws.subscribe(BinanceSubscription::DiffDepth("xrpbtc".to_string())))
-                .and_then(|ws| {
                     ws.subscribe(BinanceSubscription::OrderBook("trxbtc".to_string(), 5))
                 })
+                .and_then(|ws| ws.subscribe(BinanceSubscription::DiffDepth("xrpbtc".to_string())))
                 .and_then(|ws| ws.subscribe(BinanceSubscription::UserData(listen_key)))
                 .and_then(|ws| ws.map(|msg| println!("{:?}", msg)).collect());
             let _ = rt.block_on(job).unwrap();

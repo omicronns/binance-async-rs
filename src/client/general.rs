@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use client::Binance;
 use error::Result;
-use model::{ExchangeInfo, ServerTime};
+use model::{ExchangeInfoMsg, ServerTimeMsg};
 
 impl Binance {
     // Test connectivity
@@ -16,11 +16,11 @@ impl Binance {
     }
 
     // Check server time
-    pub fn get_server_time(&self) -> Result<impl Future<Item = ServerTime, Error = Error>> {
+    pub fn get_server_time(&self) -> Result<impl Future<Item = ServerTimeMsg, Error = Error>> {
         Ok(self.transport.get::<_, ()>("/api/v1/time", None)?)
     }
 
-    pub fn get_exchange_info(&self) -> Result<impl Future<Item = ExchangeInfo, Error = Error>> {
+    pub fn get_exchange_info(&self) -> Result<impl Future<Item = ExchangeInfoMsg, Error = Error>> {
         Ok(self.transport.get::<_, ()>("/api/v1/exchangeInfo", None)?)
     }
 }

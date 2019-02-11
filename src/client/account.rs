@@ -7,7 +7,10 @@ use sugar::{convert_args, hashmap};
 use client::Binance;
 use decimal::Decimal;
 use error::{BinanceError, Result};
-use model::{AccountInformation, Balance, OrderCanceled, OrderStatus, TradeHistory, Transaction};
+use model::{
+    AccountInformationMsg, BalanceMsg, OrderCanceledMsg, OrderStatusMsg, TradeHistoryMsg,
+    TransactionMsg,
+};
 
 static ORDER_TYPE_LIMIT: &'static str = "LIMIT";
 static ORDER_TYPE_MARKET: &'static str = "MARKET";
@@ -28,7 +31,7 @@ struct OrderRequest {
 
 impl Binance {
     // Account Information
-    pub fn get_account(&self) -> Result<impl Future<Item = AccountInformation, Error = Error>> {
+    pub fn get_account(&self) -> Result<impl Future<Item = AccountInformationMsg, Error = Error>> {
         let account_info = self
             .transport
             .signed_get::<_, ()>("/api/v3/account", None)?;
@@ -36,9 +39,12 @@ impl Binance {
     }
 
     // Balance for ONE Asset
-    pub fn get_balance(&self, asset: &str) -> Result<impl Future<Item = Balance, Error = Error>> {
+    pub fn get_balance(
+        &self,
+        asset: &str,
+    ) -> Result<impl Future<Item = BalanceMsg, Error = Error>> {
         let asset = asset.to_string();
-        let search = move |account: AccountInformation| -> Result<Balance> {
+        let search = move |account: AccountInformationMsg| -> Result<BalanceMsg> {
             let balance = account
                 .balances
                 .into_iter()
@@ -54,7 +60,7 @@ impl Binance {
     pub fn get_open_orders(
         &self,
         symbol: &str,
-    ) -> Result<impl Future<Item = Vec<OrderStatus>, Error = Error>> {
+    ) -> Result<impl Future<Item = Vec<OrderStatusMsg>, Error = Error>> {
         let params = json! {{"symbol": symbol}};
         let orders = self
             .transport
@@ -65,7 +71,7 @@ impl Binance {
     // All current open orders
     pub fn get_all_open_orders(
         &self,
-    ) -> Result<impl Future<Item = Vec<OrderStatus>, Error = Error>> {
+    ) -> Result<impl Future<Item = Vec<OrderStatusMsg>, Error = Error>> {
         let orders = self
             .transport
             .signed_get::<_, ()>("/api/v3/openOrders", None)?;
@@ -77,7 +83,7 @@ impl Binance {
         &self,
         symbol: &str,
         order_id: u64,
-    ) -> Result<impl Future<Item = OrderStatus, Error = Error>> {
+    ) -> Result<impl Future<Item = OrderStatusMsg, Error = Error>> {
         let params = json! {{"symbol": symbol, "orderId": order_id}};
 
         let order = self.transport.signed_get(API_V3_ORDER, Some(params))?;
@@ -90,7 +96,7 @@ impl Binance {
         symbol: &str,
         qty: Decimal,
         price: Decimal,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Result<impl Future<Item = TransactionMsg, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty.into(),
@@ -112,7 +118,7 @@ impl Binance {
         symbol: &str,
         qty: Decimal,
         price: Decimal,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Result<impl Future<Item = TransactionMsg, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty.into(),
@@ -132,7 +138,7 @@ impl Binance {
         &self,
         symbol: &str,
         qty: Decimal,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Result<impl Future<Item = TransactionMsg, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty,
@@ -152,7 +158,7 @@ impl Binance {
         &self,
         symbol: &str,
         qty: Decimal,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Result<impl Future<Item = TransactionMsg, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty,
@@ -171,7 +177,7 @@ impl Binance {
         &self,
         symbol: &str,
         order_id: u64,
-    ) -> Result<impl Future<Item = OrderCanceled, Error = Error>> {
+    ) -> Result<impl Future<Item = OrderCanceledMsg, Error = Error>> {
         let params = json! {{"symbol":symbol, "orderId":order_id}};
         let order_canceled = self.transport.signed_delete(API_V3_ORDER, Some(params))?;
         Ok(order_canceled)
@@ -181,7 +187,7 @@ impl Binance {
     pub fn trade_history(
         &self,
         symbol: &str,
-    ) -> Result<impl Future<Item = Vec<TradeHistory>, Error = Error>> {
+    ) -> Result<impl Future<Item = Vec<TradeHistoryMsg>, Error = Error>> {
         let params = json! {{"symbol":symbol}};
         let trade_history = self
             .transport

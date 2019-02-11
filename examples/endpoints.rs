@@ -95,7 +95,7 @@ fn main() -> Result<()> {
     }
 
     // Latest price for ALL symbols
-    match rt.block_on(bn.get_all_prices()?) {
+    match rt.block_on(bn.get_price_all()?) {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
@@ -107,7 +107,7 @@ fn main() -> Result<()> {
     }
 
     // Best price/qty on the order book for ALL symbols
-    match rt.block_on(bn.get_all_book_tickers()?) {
+    match rt.block_on(bn.get_book_ticker_all()?) {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }

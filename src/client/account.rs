@@ -69,7 +69,7 @@ impl Binance {
     }
 
     // All current open orders
-    pub fn get_all_open_orders(
+    pub fn get_open_orders_all(
         &self,
     ) -> Result<impl Future<Item = Vec<OrderStatusMsg>, Error = Error>> {
         let orders = self

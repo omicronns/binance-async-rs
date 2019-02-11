@@ -11,10 +11,10 @@ pub struct ServerTimeMsg {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountInformationMsg {
-    pub maker_commission: f32,
-    pub taker_commission: f32,
-    pub buyer_commission: f32,
-    pub seller_commission: f32,
+    pub maker_commission: Decimal,
+    pub taker_commission: Decimal,
+    pub buyer_commission: Decimal,
+    pub seller_commission: Decimal,
     pub can_trade: bool,
     pub can_withdraw: bool,
     pub can_deposit: bool,
@@ -38,6 +38,7 @@ pub struct OrderStatusMsg {
     pub price: Decimal,
     pub orig_qty: Decimal,
     pub executed_qty: Decimal,
+    pub cummulative_quote_qty: Decimal,
     pub status: OrderStatus,
     pub time_in_force: OrderTimeInForce,
     #[serde(rename = "type")]
@@ -46,6 +47,8 @@ pub struct OrderStatusMsg {
     pub stop_price: Decimal,
     pub iceberg_qty: Decimal,
     pub time: u64,
+    pub update_time: u64,
+    pub is_working: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -275,9 +278,9 @@ pub enum OrderType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderTimeInForce {
-    GTC,
-    IOC,
-    FOK,
+    Gtc,
+    Ioc,
+    Fok,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -25,7 +25,7 @@ Add this to your Cargo.toml
 
 ```toml
 [dependencies]
-binance-async = 0.2
+binance-async = { git = "https://github.com/omicronns/binance-async-rs.git" }
 ```
 
 Examples located in the examples folder.
